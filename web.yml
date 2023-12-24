@@ -1,0 +1,160 @@
+- name: LEMP Installation
+  become: yes
+  hosts: web01
+  vars:
+    php_version: "8.2"
+    php_packages:
+      - "php{{ php_version }}-cli"
+      - "php{{ php_version }}-common"
+      - "php{{ php_version }}-fpm"
+      - "php{{ php_version }}-mysql"
+      - "php{{ php_version }}-zip"
+      - "php{{ php_version }}-gd"
+      - "php{{ php_version }}-mbstring"
+      - "php{{ php_version }}-curl"
+      - "php{{ php_version }}-xml"
+      - "php{{ php_version }}-bcmath"
+  tasks:
+    - name: INSTALLING NGINX
+      apt:
+        name: nginx
+        state: latest
+        update_cache: yes
+    - name: STARTING & ENABLING NGINX
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+    - name: REMOVE "default" SITE
+      file:
+       path: "/etc/nginx/sites-enabled/default"
+       state: absent
+      notify: Restart nginx
+    - name: INJECTING CUSTOM CONF ON NGINX
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/nginx.conf
+    - name: ENABLING OUR CUSTOM CONF ON NGINX
+      file:
+       src: "/etc/nginx/sites-available/nginx.conf"
+       dest: "/etc/nginx/sites-enabled/nginx.conf"
+       state: link
+      notify: Restart nginx
+    
+    - name: Add Ondřej Surý PPA repository
+      apt_repository:
+        repo: 'ppa:ondrej/php'
+      notify:
+        - Update package cache
+
+    - name: INSTALLING php-fpm
+      apt:
+        name: "{{ php_packages }}"
+        state: present
+        update_cache: yes
+      become: yes
+    - name: EDITING THE php.ini FILE
+      lineinfile:
+         path: "/etc/php/{{ php_version }}/fpm/php.ini"
+         regexp: '^cgi.fix_pathinfo'
+         line: 'cgi.fix_pathinfo = 0'
+         backup: yes
+    - name: STARTING & ENABLING php-fpm
+      service:
+        name: "php{{ php_version }}-fpm"
+        state: started
+        enabled: yes
+
+
+    - name: INSTALLING Mysql & dependencies
+      package:
+       name: "{{item}}"
+       state: present
+       update_cache: yes
+      loop:
+        - mysql-server
+        - mysql-client 
+        - python3-mysqldb
+        - libmysqlclient-dev
+        - unzip
+
+    - name: STARTING & ENABLING mysql service
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+    - name: creating mysql user 
+      mysql_user:
+        name: "karthik"
+        password: "Kkeyan2011!"
+        priv: '*.*:ALL'
+        host: '%'
+        state: present
+        column_case_sensitive: false
+    - name: creating DB
+      mysql_db:
+        name: "DB"
+        state: present
+    - name: Enable remote login to mysql
+      lineinfile:
+         path: /etc/mysql/mysql.conf.d/mysqld.cnf
+         regexp: '^bind-address'
+         line: 'bind-address = 0.0.0.0'
+         backup: yes
+      notify:
+         - Restart mysql
+
+    - name: Create a temporary directory for downloads
+      file:
+        path: "/tmp/phpmyadmin_download"
+        state: directory
+    - name: Create a phpmyadmin
+      file:
+        path: "/usr/share/phpmyadmin"
+        state: directory
+      become: yes
+
+    - name: Download phpMyAdmin zip file
+      get_url:
+        url: "https://files.phpmyadmin.net/phpMyAdmin/5.2.1/phpMyAdmin-5.2.1-all-languages.zip"
+        dest: "/tmp/phpmyadmin_download/phpMyAdmin-5.2.1-all-languages.zip"
+    
+    - name: Move phpMyAdmin files to destination
+      ansible.builtin.shell:
+        cmd: "mv /tmp/phpmyadmin_download/phpMyAdmin-5.2.1-all-languages.zip /usr/share/phpmyadmin/"
+
+    - name: Unzip phpMyAdmin
+      ansible.builtin.unarchive:
+        src: "/usr/share/phpmyadmin/phpMyAdmin-5.2.1-all-languages.zip"
+        dest: "/usr/share/phpmyadmin"
+        remote_src: yes
+        #creates: "/usr/share/phpmyadmin"
+
+    - name: Move phpMyAdmin files to destination
+      ansible.builtin.shell:
+        cmd: "cp -r /usr/share/phpmyadmin/phpMyAdmin-5.2.1-all-languages/* /usr/share/phpmyadmin/"
+      become: yes
+      notify:
+       - Restart nginx
+
+    - name: Clean up temporary directory
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+       - "/tmp/phpmyadmin_download"
+       - "/usr/share/phpmyadmin/phpMyAdmin-5.2.1-all-languages.zip"
+       - "/usr/share/phpmyadmin/phpMyAdmin-5.2.1-all-languages"
+
+  handlers:
+    - name: Restart mysql
+      service:
+        name: mysql
+        state: restarted
+    - name: Restart nginx
+      service:
+        name: nginx
+        state: restarted
+    - name: Update package cache
+      apt:
+        update_cache: yes
