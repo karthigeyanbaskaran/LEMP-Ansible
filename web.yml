@@ -85,8 +85,8 @@
         enabled: yes
     - name: creating mysql user 
       mysql_user:
-        name: "karthik"
-        password: "Kkeyan2011!"
+        name: "username"
+        password: "password"
         priv: '*.*:ALL'
         host: '%'
         state: present
