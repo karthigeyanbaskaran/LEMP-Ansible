@@ -1,6 +1,6 @@
 # Ansible LEMP Stack Deployment
 
-This Ansible playbook automates the deployment of a LEMP (Linux, Nginx, MySQL, PHP) stack on a remote server. It includes the installation and configuration of Nginx, PHP-FPM, MySQL, and phpMyAdmin.
+This Ansible playbook automates the deployment of a LEMP (Linux, Nginx, MySQL, PHP, Phpmyadmin) stack on a remote server. It includes the installation and configuration of Nginx, PHP-FPM, MySQL, and phpMyAdmin.
 
 ## Prerequisites
 
@@ -13,9 +13,9 @@ This Ansible playbook automates the deployment of a LEMP (Linux, Nginx, MySQL, P
 all:
   hosts:
     web01:
-      ansible_host: ec2-52-66-247-173.ap-south-1.compute.amazonaws.com
-      ansible_user: ubuntu
-      ansible_ssh_private_key_file: /Users/path/Downloads/io.pem
+      ansible_host: your-host
+      ansible_user: your-host-username
+      ansible_ssh_private_key_file: pem-file
       ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
 ```
 
@@ -56,4 +56,4 @@ ansible-playbook -i inventory.yml web.yml
 
 This playbook automates the entire process of setting up a LEMP stack, ensuring a smooth deployment of your web application.
 
-**Note:** Make sure to review and customize the playbook according to your specific project requirements.
+**Note:** Make sure to review and customize the playbook according to your specific project requirements. In the Lemp.yaml file set your DB username and password for your convenience
